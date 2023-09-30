@@ -35,37 +35,55 @@ app.get('/data', (req, res) => {
 
 app.post('/file', upload.single('file'), (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded.' });
+      return res.status(400).json({ error: 'No file uploaded.' });
     }
-    const filePath = req.file.path;
-
-    const results = [];
-
-    fs.createReadStream(filePath)
-        .pipe(csv())
-        .on('data', (data) => results.push(data))
-        .on('end', () => {
+    const results: Array<{ name: string, city: string, country: string, favorite_sport: string }> = [];
+    fs.createReadStream(req.file.path)
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', () => {
         try {
-        const content = req?.file?.buffer?.toString();
-        db.run(
-            'INSERT INTO csv_data (name, city, country, favorite_sport) VALUES (?, ?, ?, ?)',
-
-            (err) => {
-                if (err) {
-                    console.error('Error:', err);
-                    return res.status(500).json({ error: 'Failed to store data in the database.' });
-                }
-        
-            return res.status(200).json({ message: 'File uploaded and stored in the database.' });
+          db.serialize(() => {
+            const stmt = db.prepare('INSERT INTO csv_data (name, city, country, favorite_sport) VALUES (?, ?, ?, ?)');
+            for (const data of results) {
+              const { name, city, country, favorite_sport } = data;
+              stmt.run(name, city, country, favorite_sport);
             }
-        );
-        
+            stmt.finalize((err) => {
+              if (err) {
+                console.error('Error:', err);
+                return res.status(500).json({ error: 'Failed to store data in the database.' });
+              }
+              return res.status(200).json({ message: 'File uploaded and stored in the database.' });
+            });
+          });
         } catch (error) {
-            console.error('Error on file:', error);
-            return res.status(500).json({ error: 'Error on file.' });
+          console.error('Error on file:', error);
+          return res.status(500).json({ error: 'Error on file.' });
         }
-    });
-});
+      });
+  });
+
+app.get('/search', (req, res) => {
+    const searchTerm = req.query.q;
+  
+    if (!searchTerm) {
+      return res.status(400).json({ error: 'Search term is required.' });
+    }
+  
+    db.all(
+      'SELECT * FROM csv_data WHERE name LIKE ? OR city LIKE ? OR country LIKE ? OR favorite_sport LIKE ?',
+      [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`],
+      (err, rows) => {
+        if (err) {
+          console.error('Error:', err);
+          return res.status(500).json({ error: 'Failed to perform the search.' });
+        }
+  
+        return res.status(200).json(rows);
+      }
+    );
+  });  
 
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
