@@ -1,0 +1,10 @@
+.btn-upload{
+    margin: 5%;
+}
+
+.card-data{
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    width: 100%;
+}
