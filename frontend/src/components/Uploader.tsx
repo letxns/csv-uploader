@@ -1,18 +1,21 @@
 import { useRef, useState, ChangeEvent } from 'react'
 import { IFileData, ICSVRow } from '../models/Uploader'
 import './uploader.css'
+import { parseCSV } from '../utils/ParseCSV'
 
 export const Uploader = () => {
   const [uploadError, setUploadError] = useState('')
-  const [fileData, setFileData] = useState<IFileData | undefined>(undefined);
+//   const [fileData, setFileData] = useState<IFileData | undefined>(undefined);
   const [csvRows, setCSVRows] = useState<ICSVRow[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>(''); 
   const uploadRef = useRef<HTMLInputElement>(null)
 
   const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
+
     if (e.target.files === null) {
       return
     }
+
     const file = e.target.files[0]
 
     if (file) {
@@ -20,36 +23,24 @@ export const Uploader = () => {
         setUploadError('Please upload a .csv file');
         return;
       }
-
       const fileReader = new FileReader()
       fileReader.onload = (event) => {
         const content:string = event?.target?.result as string;
-        setFileData({ content })
-        console.log(content)
+        
         if (content) {
             const rows = (content as string).split('\n');
             if (rows.length > 0) {
-              const dataRows = rows.slice(1).map((row: string) => {
-                const values = row.split(',');
-                const rowData: ICSVRow = {
-                  name: values[0], 
-                  city: values[1],
-                  country: values[2],
-                  favorite_sport: values[2],
-                };
-                return rowData;
-              });
+              const dataRows = parseCSV(content);
               setCSVRows(dataRows);
             }
           }
       }
-
-      e.target.value = ''
-      fileReader.readAsText(file)
-    } else {
-      setUploadError('File could not be uploaded. Please try again.')
+        e.target.value = ''
+        fileReader.readAsText(file)
+        } else {
+        setUploadError('Error on uploading file. Please try again.')
+        }
     }
-  }
 
   const filteredCSVRows = csvRows.filter((row) => {
     return row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
