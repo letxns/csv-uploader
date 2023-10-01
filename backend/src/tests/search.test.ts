@@ -19,8 +19,7 @@ beforeAll((done) => {
   
     const insertData = () => {
       if (exampleData.length === 0) {
-        done();
-        return;
+        return done();
       }
   
       const data = exampleData.pop();
@@ -52,9 +51,9 @@ async function clearDatabase() {
     });
   }  
 
-describe('GET test for /search', () => {
+describe('GET test for /api/users', () => {
     it('should return an empty array when no search term is provided', async () => {
-      const response = await request(server).get('/search');
+      const response = await request(server).get('/api/users');
       
       expect(response.status).toBe(400); 
       expect(response.body.error).toEqual('Search term is required.'); 
@@ -63,7 +62,7 @@ describe('GET test for /search', () => {
     it('should return search results based on the provided search term', async () => {
       const searchTerm = 'New York'; 
   
-      const response = await request(server).get('/search').query({ q: searchTerm });
+      const response = await request(server).get('/api/users').query({ q: searchTerm });
       
       expect(response.status).toBe(200); 
       expect(Array.isArray(response.body)).toBe(true); 
