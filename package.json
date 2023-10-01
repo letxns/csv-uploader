@@ -1,5 +1,8 @@
 {
   "scripts": {
+  "install-backend": "cd backend && npm install",
+  "install-frontend": "cd frontend && npm install",
+  "install": "concurrently \"npm run install-backend\" \"npm run install-frontend\"",
   "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
   "backend": "cd backend && npm run dev", 
   "frontend": "cd frontend && npm run dev",
