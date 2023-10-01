@@ -1,58 +1,33 @@
-import { useRef, useState, ChangeEvent, useEffect } from 'react'
-import { ICSVRow } from '../models/Uploader'
-import './uploader.css'
-import { parseCSV } from '../utils/ParseCSV'
+import React, { useRef, useState, ChangeEvent, useEffect } from 'react';
+import { ICSVRow } from '../models/Uploader';
 import axios from 'axios';
+import './Uploader.css'
 
-export const Uploader = () => {
-  const [uploadError, setUploadError] = useState('')
+export const Uploader: React.FC = () => {
+  const [uploadStatus, setUploadStatus] = useState<string>('');
   const [csvRows, setCSVRows] = useState<ICSVRow[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>(''); 
-  const uploadRef = useRef<HTMLInputElement>(null)
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<ICSVRow[]>([]);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
-  // const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleSearch = async () => {
+    try {
+      const response = await axios.get(`http://localhost:3000/api/users?q=${searchTerm}`);
+      setSearchResults(response.data);
+    } catch (error) {
+      setUploadStatus('Error while searching for data.');
+      console.error('Error:', error);
+    }
+  };
 
-  //   if (e.target.files === null) {
-  //     return
-  //   }
-
-  //   const file = e.target.files[0]
-
-  //   if (file) {
-  //     if (file.type !== 'text/csv') {
-  //       setUploadError('Please upload a .csv file');
-  //     }
-      
-  //     const fileReader = new FileReader()
-  //     fileReader.onload = (event) => {
-  //       const content:string = event?.target?.result as string;
-        
-  //       if (content) {
-  //           const rows = (content as string).split('\n');
-  //           if (rows.length > 0) {
-  //             const dataRows = parseCSV(content);
-  //             setCSVRows(dataRows);
-  //           }
-  //         }
-  //     }
-  //       e.target.value = ''
-  //       fileReader.readAsText(file)
-  //       } else {
-  //       setUploadError('Error on uploading file. Please try again.')
-  //       }
-  //   }
-
-  // const filteredCSVRows = csvRows.filter((row) => {
-  //   return row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       row.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       row.country.toLowerCase().includes(searchTerm.toLowerCase()) ||
-  //       row.favorite_sport.toLowerCase().includes(searchTerm.toLowerCase());
-  // });
-
-
+  useEffect(() => {
+    if (searchTerm) {
+      handleSearch();
+    }
+  }, [searchTerm]);
 
   const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files === null) {
+    if (!e.target.files) {
       return;
     }
 
@@ -60,7 +35,7 @@ export const Uploader = () => {
 
     if (file) {
       if (file.type !== 'text/csv') {
-        setUploadError('Please upload a .csv file');
+        setUploadStatus('Please upload a .csv file');
         return;
       }
 
@@ -68,77 +43,79 @@ export const Uploader = () => {
       formData.append('file', file);
 
       try {
-        const response = await axios.post('http://localhost:3000/file', formData, {
+        await axios.post('http://localhost:3000/api/files', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
 
-        console.log('Response:', response.data);
+        setUploadStatus('File uploaded successfully.');
         fetchData();
       } catch (error) {
-        setUploadError('Error on uploading file. Please try again.');
+        setUploadStatus('Error on uploading file. Please try again.');
         console.error('Error uploading CSV:', error);
       }
     } else {
-      setUploadError('Error on uploading file. Please try again.');
+      setUploadStatus('Error on uploading file. Please try again.');
     }
-  }
+  };
 
   const fetchData = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/data');
-
-      const dataRows = response.data; 
-      setCSVRows(dataRows);
-      console.log('Data from /data:', dataRows);
+      const response = await axios.get('http://localhost:3000/api/data');
+      setCSVRows(response.data);
+      console.log('Data from /data:', response.data);
     } catch (error) {
+      setUploadStatus('Error fetching data.');
       console.error('Error fetching data:', error);
     }
-  }
+  };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const filteredCSVRows = csvRows.filter((row) => {
-    return row.name?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
-        row.city?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
-        row.country?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
-        row.favorite_sport?.toLowerCase().includes(searchTerm?.toLowerCase());
+  const showFile = csvRows.filter((row) => {
+    const searchTerms = searchTerm.toLowerCase().split(' ');
+    return searchTerms.every((term) =>
+      Object.values(row).some((value) =>
+        String(value).toLowerCase().includes(term)
+      )
+    );
   });
+
   return (
     <section>
-        <button onClick={() => uploadRef.current?.click()} className='btn-upload'>Click to upload CSV file</button>
+      <button onClick={() => uploadRef.current?.click()} className="btn-upload">
+        Click to upload CSV file
+      </button>
+      <input
+        type="file"
+        accept=".csv"
+        ref={uploadRef}
+        onChange={handleUpload}
+        style={{ display: 'none' }}
+      />
+
+      <article>
         <input
-            type="file"
-            accept=".csv"
-            ref={uploadRef}
-            onChange={handleUpload}
-            style={{ display: 'none' }}
+          type="text"
+          placeholder="Search for data"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
-
-        <article>
-            <input 
-                type="text" 
-                placeholder="Search for data"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-        </article>
-
-        <div className="card-container">
-            {filteredCSVRows.map((row, index) => (
-            <div className="card" key={index}>
-                <h3>name: {row.name}</h3>
-                <p>city: {row.city}</p>
-                <p>country: {row.country}</p>
-                <p>favorite_sport: {row.favorite_sport}</p>
-            </div>
-            ))}
-        </div>
-
-        {uploadError ? <p>{uploadError}</p> : null}
+        {uploadStatus && <p>{uploadStatus}</p>}
+      </article>
+      <div className="card-container">
+        {showFile.map((row, index) => (
+          <div className="card" key={index}>
+            <h3>name: {row.name}</h3>
+            <p>city: {row.city}</p>
+            <p>country: {row.country}</p>
+            <p>favorite_sport: {row.favorite_sport}</p>
+          </div>
+        ))}
+      </div>
     </section>
-  )
-}
+  );
+};

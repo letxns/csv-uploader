@@ -8,3 +8,18 @@
     align-content: center;
     width: 100%;
 }
+
+.card-container{
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.card{
+    border: 1px solid grey;
+    border-radius: 15px;
+    margin: 5%;
+    background-color: #333d50;
+}

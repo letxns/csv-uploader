@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Uploader } from './Uploader.tsx'; 
+import { Uploader } from './Uploader'; 
 import '@testing-library/jest-dom'
 
 test('renders upload button', () => {
