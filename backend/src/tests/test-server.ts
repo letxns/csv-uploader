@@ -13,7 +13,7 @@ app.use(express.json());
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '../uploads'));
+        cb(null, path.join(__dirname, './mock/mockCSV.csv'));
     },
     filename: (req, file, cb) => {
         cb(null, file.originalname);
