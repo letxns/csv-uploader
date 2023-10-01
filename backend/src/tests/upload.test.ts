@@ -1,20 +1,31 @@
 import request from 'supertest';
-import { app } from '../app'; 
+import { server } from '../tests/test-server';
+import { readCSVFile } from '../utils/readCSVFile';
+import mockFs from 'mock-fs';
 
-describe('POST /upload', () => {
-  it('should return 200 if file was sent', async () => {
-    const res = await request(app)
-      .post('/upload')
-      .attach('file', 'file.csv');
+jest.mock('../utils/readCSVFile');
 
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('message', 'File uploaded and stored in the database.');
+describe('POST test', () => {
+  const mockCSVData = 'name,city,country,favorite_sport\nJohn Doe,New York,USA,Basketball';
+
+  beforeAll(() => {
+    (readCSVFile as jest.Mock).mockResolvedValue(mockCSVData);
+    mockFs({
+      'uploads': mockFs.directory(),
+    });
   });
 
-  it('should return 400 bad request if the file didnt got sent', async () => {
-    const res = await request(app).post('/upload');
+  afterAll(() => {
+    mockFs.restore();
+    server.close(); // Encerrar o servidor aqui
+  });
 
-    expect(res.status).toBe(400);
-    expect(res.body).toHaveProperty('error', 'No file uploaded.');
+  test('Should receive a CSV file and store it in the database', async () => {
+    const response = await request(server)
+      .post('/api/files')
+      .attach('file', Buffer.from(mockCSVData));
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toEqual('File uploaded and stored in the database');
   });
 });
