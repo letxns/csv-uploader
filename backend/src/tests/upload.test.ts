@@ -5,8 +5,8 @@ import mockFs from 'mock-fs';
 
 jest.mock('../utils/readCSVFile');
 
-describe('POST test', () => {
-  const mockCSVData = 'name,city,country,favorite_sport\nJohn Doe,New York,USA,Basketball';
+describe('POST /api/files', () => {
+  const mockCSVData = jest.mock('./mock/mockCSV.csv')
 
   beforeAll(() => {
     (readCSVFile as jest.Mock).mockResolvedValue(mockCSVData);
@@ -17,13 +17,13 @@ describe('POST test', () => {
 
   afterAll(() => {
     mockFs.restore();
-    server.close(); // Encerrar o servidor aqui
+    server.close(); 
   });
 
   test('Should receive a CSV file and store it in the database', async () => {
     const response = await request(server)
       .post('/api/files')
-      .attach('file', Buffer.from(mockCSVData));
+      .attach('file', Buffer.from('./mock/mockCSV.csv'), 'mockCSV.csv');
 
     expect(response.status).toBe(200);
     expect(response.body.message).toEqual('File uploaded and stored in the database');
