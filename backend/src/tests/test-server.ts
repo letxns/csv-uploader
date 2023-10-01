@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-app.get('/data', (req, res) => {
+app.get('/api/data', (req, res) => {
     db.all('SELECT * FROM csv_data', (err, rows) => {
     if (err) {
         return res.status(500).json({ error: 'Failed to retrieve data.' });
@@ -32,7 +32,7 @@ app.get('/data', (req, res) => {
     });
 });
 
-app.post('/file', upload.single('file'), async (req, res) => {
+app.post('/api/files', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded.' });
   }
@@ -60,7 +60,7 @@ app.post('/file', upload.single('file'), async (req, res) => {
   }
 });
 
-app.get('/search', (req, res) => {
+app.get('/api/users', (req, res) => {
     const searchTerm = req.query.q;
   
     if (!searchTerm) {
