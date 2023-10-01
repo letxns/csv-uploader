@@ -3,10 +3,9 @@ import multer from 'multer';
 import cors from 'cors';
 import path from 'path';
 import db from './database/database';
-import fs from "fs";
-import csv from 'csv-parser';
+import { readCSVFile } from './utils/readCSVFile';
 
-export const app = express();
+const app = express();
 const port = 3000;
 
 app.use(cors());
@@ -23,7 +22,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-app.get('/data', (req, res) => {
+app.get('/api/data', (req, res) => {
     db.all('SELECT * FROM csv_data', (err, rows) => {
     if (err) {
         return res.status(500).json({ error: 'Failed to retrieve data.' });
@@ -33,38 +32,35 @@ app.get('/data', (req, res) => {
     });
 });
 
-app.post('/file', upload.single('file'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded.' });
-    }
-    const results: Array<{ name: string, city: string, country: string, favorite_sport: string }> = [];
-    fs.createReadStream(req.file.path)
-      .pipe(csv())
-      .on('data', (data) => results.push(data))
-      .on('end', () => {
-        try {
-          db.serialize(() => {
-            const stmt = db.prepare('INSERT INTO csv_data (name, city, country, favorite_sport) VALUES (?, ?, ?, ?)');
-            for (const data of results) {
-              const { name, city, country, favorite_sport } = data;
-              stmt.run(name, city, country, favorite_sport);
-            }
-            stmt.finalize((err) => {
-              if (err) {
-                console.error('Error:', err);
-                return res.status(500).json({ error: 'Failed to store data in the database.' });
-              }
-              return res.status(200).json({ message: 'File uploaded and stored in the database.' });
-            });
-          });
-        } catch (error) {
-          console.error('Error on file:', error);
-          return res.status(500).json({ error: 'Error on file.' });
-        }
-      });
-  });
+app.post('/api/files', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+  const filePath = req.file.path;
+  try {
+    const results = await readCSVFile(filePath);
 
-app.get('/search', (req, res) => {
+    db.serialize(() => {
+      const stmt = db.prepare('INSERT INTO csv_data (name, city, country, favorite_sport) VALUES (?, ?, ?, ?)');
+      for (const data of results) {
+        const { name, city, country, favorite_sport } = data;
+        stmt.run(name, city, country, favorite_sport);
+      }
+      stmt.finalize((err) => {
+        if (err) {
+          console.error('Error:', err);
+          return res.status(500).json({ error: 'Failed to store data in the database' });
+        }
+        return res.status(200).json({ message: 'File uploaded and stored in the database' });
+      });
+    });
+  } catch (error) {
+    console.error('Error on file:', error);
+    return res.status(500).json({ error: 'Error on file.' });
+  }
+});
+
+app.get('/api/users', (req, res) => {
     const searchTerm = req.query.q;
   
     if (!searchTerm) {
@@ -83,8 +79,10 @@ app.get('/search', (req, res) => {
         return res.status(200).json(rows);
       }
     );
-  });  
+  });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
 });
+
+export {server};
